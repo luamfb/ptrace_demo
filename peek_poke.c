@@ -19,6 +19,8 @@
  * THE SOFTWARE.
  */
 
+// peek_poke.c: demonstrate usage of PEEK and POKE ptrace operations
+
 #define _GNU_SOURCE
 #include <errno.h>
 #include <stdbool.h>
