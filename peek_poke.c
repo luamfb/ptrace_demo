@@ -45,37 +45,20 @@
         exit(EXIT_FAILURE);                                             \
     } while (0)
 
-static void child(int pipe_writefd) {
-    long var = 42;
-    long *var_addr = &var;
+long target_var = 42;
+
+static void child(void) {
     ptrace(PTRACE_TRACEME, 0, 0, 0);
-    // transmit address of variable to parent
-    if (write(pipe_writefd, &var_addr, sizeof(long*)) < 0) {
-        DIE("write");
+
+    // Stop this process. This serves to notify the parent, which shoud be
+    // wait()ing for us, that we're ready to receive ptrace operations;
+    // additionally, these operations require the process to be stopped anyway.
+    if (kill(getpid(), SIGSTOP) < 0) {
+        DIE("kill");
     }
-    // HACK: keep the child alive for a while to make sure it'll receive
-    // the SIGSTOP before dying
-    sleep(5);
 
     // here, we should have been stopped and continued already.
-    printf("child: var = %ld\n", var);
-}
-
-static bool stop_child_and_wait(pid_t child_pid) {
-    int wstatus;
-    if (kill(child_pid, SIGSTOP) < 0) {
-        ERR("kill");
-        return false;
-    }
-    if (waitpid(child_pid, &wstatus, 0) < 0) {
-        ERR("waitpid");
-        return false;
-    }
-    if (!WIFSTOPPED(wstatus)) {
-        fprintf(stderr, "child still not stopped after sending SIGSTOP\n");
-        return false;
-    }
-    return true;
+    printf("child: target_var = %ld\n", target_var);
 }
 
 static void print_child_regs(pid_t child_pid) {
@@ -108,30 +91,23 @@ static void set_child_var(pid_t child_pid, long *child_var_addr, long value) {
     }
 }
 
-static void parent(pid_t child_pid, int pipe_readfd) {
-    // Don't die on errors on the parent:
+static void parent(pid_t child_pid) {
+    // Don't die on errors on the parent, except on waitpid():
     // even on error, we want to wait for the child to finish
 
-    long *child_var_addr = NULL;
-    // read variable address from child
-    if (read(pipe_readfd, &child_var_addr, sizeof(long*)) < 0) {
-        ERR("read");
+    int wstatus;
+    // wait for child to send SIGSTOP to itself.
+    if (waitpid(child_pid, &wstatus, 0) < 0) {
+        DIE("waitpid");
     }
-    if (child_var_addr) {
-        if (stop_child_and_wait(child_pid)) {
-            print_child_regs(child_pid);
-            print_child_var(child_pid, child_var_addr);
-            const long NEW_VALUE = 51;
-            set_child_var(child_pid, child_var_addr, NEW_VALUE);
-            if (ptrace(PTRACE_CONT, child_pid, 0, 0) < 0) {
-                ERR("ptrace CONT");
-            }
-        }
-    } else {
-        fprintf(stderr, "error: var_addr is still NULL after read()!\n");
+    print_child_regs(child_pid);
+    print_child_var(child_pid, &target_var);
+    const long NEW_VALUE = 51;
+    set_child_var(child_pid, &target_var, NEW_VALUE);
+    if (ptrace(PTRACE_CONT, child_pid, 0, 0) < 0) {
+        ERR("ptrace CONT");
     }
 
-    int wstatus;
     if (waitpid(child_pid, &wstatus, 0) < 0) {
         DIE("waitpid");
     }
@@ -141,18 +117,13 @@ static void parent(pid_t child_pid, int pipe_readfd) {
 }
 
 int main(int argc, char **argv) {
-    int pipefd[2];
-    if (pipe(pipefd) < 0) {
-        DIE("pipe");
-    }
-
     pid_t pid = fork();
     if (pid < 0) {
         DIE("fork");
     } else if (pid == 0) {
-        child(pipefd[1]);
+        child();
     } else {
-        parent(pid, pipefd[0]);
+        parent(pid);
     }
     return 0;
 }
