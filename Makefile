@@ -1,8 +1,10 @@
-OBJ := peek_poke.o
+OBJ := peek_poke.o breakpoint.o
 
-all : peek_poke
+all : peek_poke breakpoint
 
 peek_poke : peek_poke.o
+
+breakpoint : breakpoint.o
 
 $(OBJ) : %.o : %.c
 

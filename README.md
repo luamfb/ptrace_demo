@@ -1,1 +1,1 @@
-A simple C demo showing how to use the ptrace() system call.
+Simple C demos showing how to use the ptrace() system call.
