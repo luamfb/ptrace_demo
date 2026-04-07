@@ -1,14 +1,22 @@
+BUILD_DIR := build
+
 OBJ := peek_poke.o breakpoint.o
+OBJ_PATH := $(addprefix $(BUILD_DIR)/, $(OBJ))
 
-all : peek_poke breakpoint
+BIN := peek_poke breakpoint
+BIN_PATH := $(addprefix $(BUILD_DIR)/, $(BIN))
 
-peek_poke : peek_poke.o
+all : $(BIN_PATH)
 
-breakpoint : breakpoint.o
+$(BIN_PATH) : % : %.o | $(BUILD_DIR)
 
-$(OBJ) : %.o : %.c
+$(OBJ_PATH) : $(BUILD_DIR)/%.o : %.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $^
+
+$(BUILD_DIR) :
+	mkdir -p $(BUILD_DIR)
 
 clean :
-	rm -f $(OBJ)
+	rm -rf $(BUILD_DIR)
 
 .PHONY: all clean

@@ -1,3 +1,2 @@
 *.o
-peek_poke
-breakpoint
+build/*
