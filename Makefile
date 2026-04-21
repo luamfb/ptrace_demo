@@ -1,9 +1,9 @@
 BUILD_DIR := build
 
-OBJ := peek_poke.o breakpoint.o
+OBJ := peek_poke.o breakpoint.o single_step.o
 OBJ_PATH := $(addprefix $(BUILD_DIR)/, $(OBJ))
 
-BIN := peek_poke breakpoint
+BIN := peek_poke breakpoint single_step
 BIN_PATH := $(addprefix $(BUILD_DIR)/, $(BIN))
 
 all : $(BIN_PATH)
